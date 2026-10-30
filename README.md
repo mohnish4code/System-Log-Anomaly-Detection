@@ -179,6 +179,20 @@ FastAPI serves both the JSON API and the built React app, so the whole project r
 
 Light and dark themes, phone-width layout, and links to each page (e.g. `#/bgl/monitoring`).
 
+<details>
+<summary>More screenshots</summary>
+
+**Templates**
+![Templates](docs/screenshots/templates.png)
+
+**BGL monitoring**
+![BGL monitoring](docs/screenshots/monitoring-bgl.png)
+
+**Dark theme**
+![Dark theme](docs/screenshots/monitoring-dark.png)
+
+</details>
+
 ---
 
 ## ▶️ How to run

@@ -4,11 +4,12 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
-data/
-artifacts/
-mlruns/
-mlflow.db
-results/stream/
+# Generated locally; leading slash so only the top-level folders match (not src/data/)
+/data/
+/artifacts/
+/mlruns/
+/mlflow.db
+/results/stream/
 
-frontend/node_modules/
-frontend/dist/
+/frontend/node_modules/
+/frontend/dist/
