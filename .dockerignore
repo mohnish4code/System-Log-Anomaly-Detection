@@ -1,0 +1,11 @@
+venv/
+data/
+artifacts/
+results/
+mlruns/
+mlflow.db
+.git/
+**/__pycache__/
+.pytest_cache/
+frontend/node_modules/
+frontend/dist/

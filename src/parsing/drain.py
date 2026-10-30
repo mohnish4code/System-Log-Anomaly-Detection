@@ -16,6 +16,7 @@ class LogParser:
     """Online Drain parser: each call assigns a line to a stable integer event ID."""
 
     def __init__(self, sim_th: float = 0.4, depth: int = 4, max_children: int = 100):
+        self._settings = {"sim_th": sim_th, "depth": depth, "max_children": max_children}
         config = TemplateMinerConfig()
         config.drain_sim_th = sim_th
         config.drain_depth = depth
@@ -23,6 +24,16 @@ class LogParser:
         config.masking_instructions = [MaskingInstruction(p, name) for p, name in MASKS]
         config.profiling_enabled = False
         self.miner = TemplateMiner(config=config)
+
+    # Pickle only the settings and the learned parse tree. TemplateMiner also holds a
+    # cachetools LRUCache whose module path differs between cachetools versions, which
+    # would make saved parsers unloadable after a dependency upgrade.
+    def __getstate__(self) -> dict:
+        return {"settings": self._settings, "drain": self.miner.drain}
+
+    def __setstate__(self, state: dict) -> None:
+        self.__init__(**state["settings"])
+        self.miner.drain = state["drain"]
 
     def parse(self, content: str) -> int:
         # Skips TemplateMiner.add_log_message, which builds a result dict

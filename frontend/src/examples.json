@@ -1,0 +1,66 @@
+{
+ "hdfs": {
+  "normal": [
+   "081109 204611 30 INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: /user/root/rand/_logs/history/ip-10-250-19-102.ec2.internal_1226291400491_job_200811092030_0001_root_random-writer. blk_-7007586470894854585",
+   "081109 204612 552 INFO dfs.DataNode$DataXceiver: Receiving block blk_-7007586470894854585 src: /10.251.43.21:53805 dest: /10.251.43.21:50010",
+   "081109 204612 557 INFO dfs.DataNode$DataXceiver: Receiving block blk_-7007586470894854585 src: /10.251.126.83:46130 dest: /10.251.126.83:50010",
+   "081109 204612 579 INFO dfs.DataNode$DataXceiver: Receiving block blk_-7007586470894854585 src: /10.250.19.102:37909 dest: /10.250.19.102:50010",
+   "081109 213817 31 INFO dfs.FSNamesystem: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.251.126.83:50010 is added to blk_-7007586470894854585 size 1884763",
+   "081109 213817 32 INFO dfs.FSNamesystem: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.250.6.4:50010 is added to blk_-7007586470894854585 size 1884763",
+   "081109 213817 35 INFO dfs.FSNamesystem: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.251.43.21:50010 is added to blk_-7007586470894854585 size 1884763",
+   "081109 213817 553 INFO dfs.DataNode$PacketResponder: PacketResponder 0 for block blk_-7007586470894854585 terminating",
+   "081109 213817 553 INFO dfs.DataNode$PacketResponder: Received block blk_-7007586470894854585 of size 1884763 from /10.251.43.21",
+   "081109 213817 558 INFO dfs.DataNode$PacketResponder: PacketResponder 1 for block blk_-7007586470894854585 terminating",
+   "081109 213817 558 INFO dfs.DataNode$PacketResponder: Received block blk_-7007586470894854585 of size 1884763 from /10.251.126.83",
+   "081109 213817 580 INFO dfs.DataNode$PacketResponder: PacketResponder 2 for block blk_-7007586470894854585 terminating",
+   "081109 213817 580 INFO dfs.DataNode$PacketResponder: Received block blk_-7007586470894854585 of size 1884763 from /10.250.19.102",
+   "081109 222241 13 INFO dfs.DataBlockScanner: Verification succeeded for blk_-7007586470894854585",
+   "081110 103053 30 INFO dfs.FSNamesystem: BLOCK* NameSystem.delete: blk_-7007586470894854585 is added to invalidSet of 10.250.6.4:50010",
+   "081110 103053 30 INFO dfs.FSNamesystem: BLOCK* NameSystem.delete: blk_-7007586470894854585 is added to invalidSet of 10.251.126.83:50010",
+   "081110 103053 30 INFO dfs.FSNamesystem: BLOCK* NameSystem.delete: blk_-7007586470894854585 is added to invalidSet of 10.251.43.21:50010",
+   "081110 103519 19 INFO dfs.FSDataset: Deleting block blk_-7007586470894854585 file /mnt/hadoop/dfs/data/current/subdir46/blk_-7007586470894854585",
+   "081110 103530 19 INFO dfs.FSDataset: Deleting block blk_-7007586470894854585 file /mnt/hadoop/dfs/data/current/subdir7/blk_-7007586470894854585",
+   "081110 103532 19 INFO dfs.FSDataset: Deleting block blk_-7007586470894854585 file /mnt/hadoop/dfs/data/current/subdir57/blk_-7007586470894854585"
+  ],
+  "anomalous": [
+   "081109 203533 147 INFO dfs.DataNode$DataXceiver: Receiving block blk_-3102267849859399193 src: /10.251.215.50:58322 dest: /10.251.215.50:50010",
+   "081109 203533 148 INFO dfs.DataNode$DataXceiver: Receiving block blk_-3102267849859399193 src: /10.251.215.50:51482 dest: /10.251.215.50:50010",
+   "081109 203533 33 INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: /user/root/rand/_temporary/_task_200811092030_0001_m_000249_0/part-00249. blk_-3102267849859399193",
+   "081109 203633 147 INFO dfs.DataNode$DataXceiver: writeBlock blk_-3102267849859399193 received exception java.net.SocketTimeoutException",
+   "081109 203634 190 INFO dfs.DataNode$PacketResponder: PacketResponder 2 for block blk_-3102267849859399193 terminating",
+   "081109 203634 190 INFO dfs.DataNode$PacketResponder: PacketResponder blk_-3102267849859399193 2 Exception java.io.EOFException",
+   "081109 204731 148 INFO dfs.DataNode$BlockReceiver: Exception in receiveBlock for block blk_-3102267849859399193 java.io.IOException: Connection reset by peer",
+   "081109 204731 148 INFO dfs.DataNode$DataXceiver: writeBlock blk_-3102267849859399193 received exception java.io.IOException: Connection reset by peer"
+  ]
+ },
+ "bgl": {
+  "normal": [
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J15-U01 2005-06-25-11.47.11.451131 R37-M1-N3-C:J15-U01 RAS KERNEL INFO generating core.22224",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J15-U01 2005-06-25-11.47.11.478034 R37-M1-N3-C:J15-U01 RAS KERNEL INFO generating core.54992",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J17-U01 2005-06-25-11.47.11.513142 R37-M1-N3-C:J17-U01 RAS KERNEL INFO generating core.21200",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J17-U01 2005-06-25-11.47.11.540834 R37-M1-N3-C:J17-U01 RAS KERNEL INFO generating core.53968",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J11-U01 2005-06-25-11.47.11.576953 R37-M1-N3-C:J11-U01 RAS KERNEL INFO generating core.22225",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J11-U01 2005-06-25-11.47.11.603821 R37-M1-N3-C:J11-U01 RAS KERNEL INFO generating core.54993",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J07-U01 2005-06-25-11.47.11.639286 R37-M1-N3-C:J07-U01 RAS KERNEL INFO generating core.22226",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J07-U01 2005-06-25-11.47.11.666133 R37-M1-N3-C:J07-U01 RAS KERNEL INFO generating core.54994",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J13-U01 2005-06-25-11.47.11.703038 R37-M1-N3-C:J13-U01 RAS KERNEL INFO generating core.21201",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J13-U01 2005-06-25-11.47.11.729994 R37-M1-N3-C:J13-U01 RAS KERNEL INFO generating core.53969",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J09-U01 2005-06-25-11.47.11.764902 R37-M1-N3-C:J09-U01 RAS KERNEL INFO generating core.21202",
+   "- 1119725231 2005.06.25 R37-M1-N3-C:J09-U01 2005-06-25-11.47.11.791443 R37-M1-N3-C:J09-U01 RAS KERNEL INFO generating core.53970"
+  ],
+  "anomalous": [
+   "KERNMC 1119825782 2005.06.26 R24-M1-NB-C:J02-U01 2005-06-26-15.43.02.805726 R24-M1-NB-C:J02-U01 RAS KERNEL FATAL machine check interrupt",
+   "- 1119825782 2005.06.26 R24-M1-NB-C:J02-U01 2005-06-26-15.43.02.971585 R24-M1-NB-C:J02-U01 RAS KERNEL FATAL instruction address: 0x00440a9c",
+   "- 1119825783 2005.06.26 R24-M1-NB-C:J02-U01 2005-06-26-15.43.03.133837 R24-M1-NB-C:J02-U01 RAS KERNEL FATAL machine check status register: 0x82000000",
+   "- 1119825783 2005.06.26 R16-M1-N2-C:J17-U01 2005-06-26-15.43.03.313215 R16-M1-N2-C:J17-U01 RAS KERNEL INFO 255 ddr errors(s) detected and corrected on rank 0, symbol 0, bit 0",
+   "- 1119825783 2005.06.26 R10-M0-N7-C:J17-U01 2005-06-26-15.43.03.347841 R10-M0-N7-C:J17-U01 RAS KERNEL INFO 1 ddr errors(s) detected and corrected on rank 0, symbol 14, bit 7",
+   "- 1119825783 2005.06.26 R04-M1-N8-C:J17-U11 2005-06-26-15.43.03.382616 R04-M1-N8-C:J17-U11 RAS KERNEL INFO 1 L3 EDRAM error(s) (dcr 0x0157) detected and corrected",
+   "- 1119825783 2005.06.26 R20-M0-NE-C:J03-U01 2005-06-26-15.43.03.416938 R20-M0-NE-C:J03-U01 RAS KERNEL INFO 6 ddr errors(s) detected and corrected on rank 0, symbol 13, bit 5",
+   "- 1119825783 2005.06.26 R11-M1-N3-C:J07-U11 2005-06-26-15.43.03.451859 R11-M1-N3-C:J07-U11 RAS KERNEL INFO 1 ddr errors(s) detected and corrected on rank 0, symbol 16, bit 3",
+   "- 1119825783 2005.06.26 R04-M0-NA-C:J03-U01 2005-06-26-15.43.03.500789 R04-M0-NA-C:J03-U01 RAS KERNEL INFO 2 L3 EDRAM error(s) (dcr 0x0157) detected and corrected",
+   "- 1119825783 2005.06.26 R24-M1-NB-C:J02-U01 2005-06-26-15.43.03.528354 R24-M1-NB-C:J02-U01 RAS KERNEL FATAL summary...........................1",
+   "- 1119825783 2005.06.26 R21-M0-NB-C:J15-U11 2005-06-26-15.43.03.726391 R21-M0-NB-C:J15-U11 RAS KERNEL INFO 30 ddr errors(s) detected and corrected on rank 0, symbol 8, bit 0",
+   "- 1119825783 2005.06.26 R16-M1-N2-C:J17-U01 2005-06-26-15.43.03.752870 R16-M1-N2-C:J17-U01 RAS KERNEL INFO 255 ddr errors(s) detected and corrected on rank 0, symbol 0, bit 1"
+  ]
+ }
+}

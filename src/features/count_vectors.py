@@ -29,7 +29,7 @@ class EventCountVectorizer:
         lengths = np.fromiter(map(len, sequences), dtype=np.int64, count=len(sequences))
         flat = np.concatenate([np.asarray(s, dtype=np.int64) for s in sequences]) if lengths.sum() else \
             np.empty(0, dtype=np.int64)
-        in_range = flat < len(self._lookup)
+        in_range = (flat >= 0) & (flat < len(self._lookup))  # -1 marks a line no template matched
         cols = np.full(len(flat), self.unk_index_, dtype=np.int64)
         cols[in_range] = self._lookup[flat[in_range]]
         rows = np.repeat(np.arange(len(sequences)), lengths)

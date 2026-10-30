@@ -1,0 +1,3 @@
+# Optional: to run the notebooks in notebooks/
+jupyterlab
+matplotlib==3.11.2

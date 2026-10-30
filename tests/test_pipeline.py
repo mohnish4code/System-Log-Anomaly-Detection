@@ -57,7 +57,7 @@ def test_chronological_split_has_no_time_overlap():
 
 def test_vectorizer_maps_unseen_events_to_unk():
     vec = EventCountVectorizer().fit([[1, 2, 2], [5]])
-    X = vec.transform([[2, 2, 9, 1000], []]).toarray()
+    X = vec.transform([[2, 2, 9, -1], []]).toarray()
     assert vec.n_features == 4
     assert X.tolist() == [[0, 2, 0, 2], [0, 0, 0, 0]]
 

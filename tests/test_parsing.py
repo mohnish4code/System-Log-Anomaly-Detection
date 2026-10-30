@@ -49,6 +49,17 @@ def test_drain_groups_lines_differing_only_in_variables():
     assert parser.match("Something never seen before") is None
 
 
+def test_parser_pickle_round_trip_keeps_templates():
+    import pickle
+
+    parser = LogParser(sim_th=0.5)
+    a = parser.parse("Received block blk_1 of size 5 from /1.2.3.4")
+    clone = pickle.loads(pickle.dumps(parser))
+    assert clone._settings["sim_th"] == 0.5
+    assert clone.templates() == parser.templates()
+    assert clone.parse("Received block blk_2 of size 9 from /5.6.7.8") == a
+
+
 def test_grouping_accuracy():
     assert grouping_accuracy(["A", "A", "B"], [1, 1, 2]) == 1.0
     # Predicted cluster 1 merges A and B: none of those lines are correct.

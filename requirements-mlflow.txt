@@ -1,0 +1,5 @@
+# Optional experiment tracking (the --mlflow flag). Install separately, after requirements.txt:
+#   pip install -r requirements-mlflow.txt
+# drain3 pins cachetools==4.2.1 but MLflow needs >=5, so pip prints a conflict warning.
+# drain3 works with the newer cachetools (the test suite passes), so the warning is safe to ignore.
+mlflow==3.17.2
