@@ -27,6 +27,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from src.config import DATASETS, RESULTS_DIR
+from src.evaluation.metrics import alert_counts, detection_delay_minutes
 from src.grouping.build_sequences import load_hdfs_labels
 from src.parsing.log_formats import LINE_PARSERS
 from src.parsing.parse_logs import find_raw_log
@@ -36,8 +37,12 @@ STREAM_DIR = RESULTS_DIR / "stream"
 
 
 class Replay:
-    def __init__(self, scorer: Scorer, window_seconds: int, idle_seconds: int, labels: pd.Series | None):
+    def __init__(self, scorer: Scorer, window_seconds: int, idle_seconds: int, labels: pd.Series | None,
+                 evict_seconds: int | None = None):
+        """evict_seconds (HDFS): drop a session from memory once it has no unscored events and
+        has been quiet this long (default 10 x idle_seconds). Its scored record is kept."""
         self.scorer, self.window_seconds, self.idle_seconds = scorer, window_seconds, idle_seconds
+        self.evict_seconds = 10 * idle_seconds if evict_seconds is None else evict_seconds
         self.labels = labels
         self.open: dict[str, Session] = {}
         self.dirty: set[str] = set()  # sessions with events not yet scored
@@ -72,19 +77,26 @@ class Replay:
         else:
             due = [k for k in self.dirty if self.open[k].end_time + self.idle_seconds <= now]
             self._score(due, now)
+            # Without eviction every block ever seen stays in memory for the whole replay.
+            # A session quiet for evict_seconds is treated as finished (warm-up-only ones too).
+            stale = [k for k, s in self.open.items() if k not in self.dirty and s.end_time + self.evict_seconds <= now]
+            for k in stale:
+                del self.open[k]
 
     def finish(self, now: int) -> None:
         self._score(sorted(self.dirty), now)
 
 
-def _first_timestamp_after(log_path, byte_offset: int, parse_line) -> int:
+def _first_timestamp_after(log_path, byte_offset: int, parse_line) -> int | None:
+    """Timestamp of the first parseable line after byte_offset, or None if there is none."""
     with open(log_path, encoding="utf-8", errors="replace") as f:
         f.seek(byte_offset)
-        f.readline()  # skip the partial line we landed in
+        if byte_offset:
+            f.readline()  # skip the partial line we landed in
         for raw in f:
             if (rec := parse_line(raw)) is not None:
                 return rec.timestamp
-    raise ValueError("no parseable line after the start offset")
+    return None
 
 
 def run(dataset: str, model: str | None, start_fraction: float, warmup_fraction: float, max_lines: int | None,
@@ -100,6 +112,9 @@ def run(dataset: str, model: str | None, start_fraction: float, warmup_fraction:
     log_path = find_raw_log(dataset)
     size = log_path.stat().st_size
     live_from = _first_timestamp_after(log_path, int(size * start_fraction), parse_line)
+    if live_from is None:
+        print(f"Nothing to replay: {log_path} has no parseable lines after --start-fraction {start_fraction}.")
+        return pd.DataFrame()
     warmup_byte = int(size * warmup_fraction)
     n_live = 0
     last_check, last_ts, wall_start, log_start = None, None, time.perf_counter(), None
@@ -128,7 +143,11 @@ def run(dataset: str, model: str | None, start_fraction: float, warmup_fraction:
             if last_check is None or last_ts - last_check >= 60:
                 replay.checkpoint(last_ts)
                 last_check = last_ts
-    replay.finish(last_ts)
+    if last_ts is not None:
+        replay.finish(last_ts)
+    if not replay.records:
+        print("Nothing was scored: no parseable log lines in the replay range (empty input or --max-lines 0).")
+        return pd.DataFrame()
 
     STREAM_DIR.mkdir(parents=True, exist_ok=True)
     scores = pd.DataFrame(replay.records.values()).sort_values("start_time")
@@ -143,23 +162,22 @@ def run(dataset: str, model: str | None, start_fraction: float, warmup_fraction:
     return scores
 
 
-def summarize(scores: pd.DataFrame, dataset: str) -> None:
-    y, alerted = scores["label"].astype(bool), scores["alerted"]
-    tp, fp, fn = int((alerted & y).sum()), int((alerted & ~y).sum()), int((~alerted & y).sum())
-    precision = tp / (tp + fp) if tp + fp else 0.0
-    recall = tp / (tp + fn) if tp + fn else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    print(f"\n{len(scores):,} groups, {int(y.sum()):,} anomalous, {int(alerted.sum()):,} alerts")
-    print(f"precision {precision:.3f}  recall {recall:.3f}  F1 {f1:.3f}  (TP {tp}, FP {fp}, FN {fn})")
+def _fmt(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.3f}"
 
-    hits = scores[alerted & y]
-    if "started_live" in hits:
-        hits = hits[hits["started_live"].astype(bool)]
-    if len(hits):
-        began = hits["first_anomaly_time"].fillna(hits["start_time"]) if dataset == "bgl" else hits["start_time"]
-        delay_min = (hits["alert_time"] - began) / 60
+
+def summarize(scores: pd.DataFrame, dataset: str) -> dict:
+    y, alerted = scores["label"].astype(bool), scores["alerted"].astype(bool)
+    m = alert_counts(y, alerted)
+    print(f"\n{len(scores):,} groups, {int(y.sum()):,} anomalous, {int(alerted.sum()):,} alerts")
+    print(f"precision {_fmt(m['precision'])}  recall {_fmt(m['recall'])}  F1 {_fmt(m['f1'])}  "
+          f"(TP {m['tp']}, FP {m['fp']}, FN {m['fn']})")
+
+    delay_min = detection_delay_minutes(scores, dataset)
+    if len(delay_min):
         print(f"detection delay (minutes): median {np.median(delay_min):.1f}, "
               f"p90 {np.percentile(delay_min, 90):.1f}, max {delay_min.max():.1f}")
+    return m
 
 
 def main() -> None:

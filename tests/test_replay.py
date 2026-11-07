@@ -21,7 +21,7 @@ def rec(ts):
 
 
 def test_warmup_builds_history_without_scoring():
-    replay = Replay(StubScorer(), window_seconds=3600, idle_seconds=60, labels=None)
+    replay = Replay(StubScorer(), window_seconds=3600, idle_seconds=60, labels=None, evict_seconds=10_000)
     replay.add("blk_1", 1, rec(0), "line a", live=False)
     replay.add("blk_1", 2, rec(10), "line b", live=False)
     replay.add("blk_2", 1, rec(20), "line c", live=False)  # finishes during warm-up
@@ -35,6 +35,21 @@ def test_warmup_builds_history_without_scoring():
     assert replay.records["blk_1"]["alert_time"] is None
     assert "blk_2" not in replay.records
     assert replay.open["blk_1"].raw_lines == ["line d"]  # raw lines only kept once live
+
+
+def test_idle_scored_sessions_are_evicted_but_records_kept():
+    replay = Replay(StubScorer(), window_seconds=3600, idle_seconds=60, labels=None, evict_seconds=600)
+    replay.add("blk_1", 1, rec(0), "a", live=True)
+    replay.add("blk_2", 1, rec(500), "b", live=True)
+    replay.checkpoint(100)  # blk_1 scored, still recent enough to keep
+    assert set(replay.open) == {"blk_1", "blk_2"} and "blk_1" in replay.records
+    replay.checkpoint(700)  # blk_1 quiet for 700s > 600s: evicted; blk_2 is scored and kept
+    assert set(replay.open) == {"blk_2"}
+    assert set(replay.records) == {"blk_1", "blk_2"}
+
+    replay.add("blk_3", 1, rec(4990), "c", live=True)  # not idle long enough to score yet
+    replay.checkpoint(5000)
+    assert set(replay.open) == {"blk_3"} and "blk_3" not in replay.records
 
 
 def test_session_without_warmup_history_alerts():
