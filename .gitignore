@@ -10,6 +10,7 @@ __pycache__/
 /mlruns/
 /mlflow.db
 /results/stream/
+/.coverage
 
 /frontend/node_modules/
 /frontend/dist/

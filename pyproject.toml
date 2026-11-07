@@ -1,7 +1,27 @@
 [project]
 name = "system-log-anomaly-detection"
-version = "0.1.0"
+version = "1.0.0"
+description = "Anomaly detection on HDFS and BGL system logs: Drain parsing, classical and deep sequence models, streaming replay, FastAPI + React web app."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mohnish Shandilya" }]
 requires-python = ">=3.12"
+# Runtime pins live in requirements.txt; test/lint tools in requirements-dev.txt.
+dynamic = ["dependencies"]
+
+[project.urls]
+Repository = "https://github.com/mohnish4code/System-Log-Anomaly-Detection"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["src*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
