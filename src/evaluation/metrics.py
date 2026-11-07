@@ -1,5 +1,6 @@
 """Detection metrics. Accuracy is deliberately absent: with ~97% normal sessions,
 always predicting "normal" already scores ~97%."""
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, precision_recall_curve
@@ -51,8 +52,9 @@ def best_f1_threshold(y_true: np.ndarray, scores: np.ndarray) -> float:
     if y_true.sum() == 0:
         return float(np.max(scores)) + 1e-9  # no positives to tune on: flag nothing
     precision, recall, thresholds = precision_recall_curve(y_true, scores)
-    f1 = np.divide(2 * precision * recall, precision + recall,
-                   out=np.zeros_like(precision), where=(precision + recall) > 0)
+    f1 = np.divide(
+        2 * precision * recall, precision + recall, out=np.zeros_like(precision), where=(precision + recall) > 0
+    )
     return float(thresholds[np.argmax(f1[:-1])])
 
 

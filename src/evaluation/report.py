@@ -1,7 +1,8 @@
 """Merge per-family result CSVs into one table per dataset.
 
-    python -m src.evaluation.report --dataset hdfs
+python -m src.evaluation.report --dataset hdfs
 """
+
 import argparse
 
 import pandas as pd
@@ -17,11 +18,15 @@ def load_results(dataset: str) -> pd.DataFrame:
 
 
 def to_markdown(results: pd.DataFrame) -> str:
-    lines = ["| Model | Precision | Recall | F1 | PR-AUC | False alarms (test) | False alarms / day |",
-             "|---|---|---|---|---|---|---|"]
+    lines = [
+        "| Model | Precision | Recall | F1 | PR-AUC | False alarms (test) | False alarms / day |",
+        "|---|---|---|---|---|---|---|",
+    ]
     for r in results.itertuples():
-        lines.append(f"| {r.model} | {r.precision:.3f} | {r.recall:.3f} | {r.f1:.3f} | "
-                     f"{r.pr_auc:.3f} | {r.fp:,} | {r.false_alarms_per_day:,.1f} |")
+        lines.append(
+            f"| {r.model} | {r.precision:.3f} | {r.recall:.3f} | {r.f1:.3f} | "
+            f"{r.pr_auc:.3f} | {r.fp:,} | {r.false_alarms_per_day:,.1f} |"
+        )
     return "\n".join(lines)
 
 

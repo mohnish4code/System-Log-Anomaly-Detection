@@ -12,6 +12,7 @@ The file is parsed once in its original (chronological) order, exactly as an
 online parser would see it, so templates for the test period are never used
 before they appear.
 """
+
 import argparse
 import time
 from pathlib import Path
@@ -29,21 +30,25 @@ from src.parsing.log_formats import BLOCK_RE, LINE_PARSERS, is_keyword_alert
 RAW_FILES = {"hdfs": "HDFS.log", "bgl": "BGL.log"}
 
 SCHEMAS = {
-    "hdfs": pa.schema([
-        ("line_id", pa.int64()),
-        ("timestamp", pa.int64()),
-        ("event_id", pa.int32()),
-        ("keyword", pa.bool_()),
-        ("block_id", pa.int64()),
-    ]),
-    "bgl": pa.schema([
-        ("line_id", pa.int64()),
-        ("timestamp", pa.int64()),
-        ("event_id", pa.int32()),
-        ("keyword", pa.bool_()),
-        ("label", pa.int8()),
-        ("node", pa.string()),
-    ]),
+    "hdfs": pa.schema(
+        [
+            ("line_id", pa.int64()),
+            ("timestamp", pa.int64()),
+            ("event_id", pa.int32()),
+            ("keyword", pa.bool_()),
+            ("block_id", pa.int64()),
+        ]
+    ),
+    "bgl": pa.schema(
+        [
+            ("line_id", pa.int64()),
+            ("timestamp", pa.int64()),
+            ("event_id", pa.int32()),
+            ("keyword", pa.bool_()),
+            ("label", pa.int8()),
+            ("node", pa.string()),
+        ]
+    ),
 }
 
 
@@ -57,8 +62,14 @@ def find_raw_log(dataset: str) -> Path:
     return matches[0]
 
 
-def parse_file(dataset: str, log_path: Path, out_dir: Path, parser: LogParser | None = None,
-               max_lines: int | None = None, chunk_size: int = 1_000_000) -> LogParser:
+def parse_file(
+    dataset: str,
+    log_path: Path,
+    out_dir: Path,
+    parser: LogParser | None = None,
+    max_lines: int | None = None,
+    chunk_size: int = 1_000_000,
+) -> LogParser:
     parse_line = LINE_PARSERS[dataset]
     schema = SCHEMAS[dataset]
     parser = parser or LogParser()
@@ -73,8 +84,7 @@ def parse_file(dataset: str, log_path: Path, out_dir: Path, parser: LogParser | 
         for v in cols.values():
             v.clear()
 
-    with open(log_path, encoding="utf-8", errors="replace") as f, \
-            pq.ParquetWriter(out_path, schema) as writer:
+    with open(log_path, encoding="utf-8", errors="replace") as f, pq.ParquetWriter(out_path, schema) as writer:
         for line_id, line in enumerate(tqdm(f, unit=" lines", mininterval=2, total=max_lines)):
             if max_lines is not None and line_id >= max_lines:
                 break

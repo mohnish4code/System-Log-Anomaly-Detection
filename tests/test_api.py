@@ -1,4 +1,5 @@
 """End-to-end check of the scoring API on tiny artifacts built from synthetic HDFS lines."""
+
 import joblib
 import numpy as np
 import pytest
@@ -12,12 +13,16 @@ from src.parsing.drain import LogParser
 from src.parsing.log_formats import parse_hdfs_line
 
 NORMAL_SESSION = [
-    "081109 203615 148 INFO dfs.DataNode$DataXceiver: Receiving block {blk} src: /10.250.19.102:54106 dest: /10.250.19.102:50010",
+    "081109 203615 148 INFO dfs.DataNode$DataXceiver: Receiving block {blk} "
+    "src: /10.250.19.102:54106 dest: /10.250.19.102:50010",
     "081109 203615 149 INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: /mnt/hadoop/job.jar. {blk}",
     "081109 203616 150 INFO dfs.DataNode$PacketResponder: Received block {blk} of size 67108864 from /10.250.10.6",
     "081109 203617 151 INFO dfs.DataNode$PacketResponder: PacketResponder 1 for block {blk} terminating",
 ]
-FAILURE = "081109 203618 152 WARN dfs.DataNode$DataXceiver: writeBlock {blk} received exception java.io.IOException: Connection reset by peer"
+FAILURE = (
+    "081109 203618 152 WARN dfs.DataNode$DataXceiver: writeBlock {blk} "
+    "received exception java.io.IOException: Connection reset by peer"
+)
 
 
 @pytest.fixture
@@ -25,8 +30,8 @@ def client(tmp_path, monkeypatch):
     parser = LogParser()
     sessions = []
     for i in range(50):
-        lines = [l.format(blk=f"blk_{i}") for l in NORMAL_SESSION]
-        sessions.append([parser.parse(parse_hdfs_line(l).content) for l in lines])
+        lines = [line.format(blk=f"blk_{i}") for line in NORMAL_SESSION]
+        sessions.append([parser.parse(parse_hdfs_line(line).content) for line in lines])
     parser.parse(parse_hdfs_line(FAILURE.format(blk="blk_0")).content)  # template known, never in training
 
     vec = EventCountVectorizer().fit(sessions)
@@ -35,9 +40,15 @@ def client(tmp_path, monkeypatch):
     out = tmp_path / "hdfs"
     out.mkdir()
     joblib.dump(parser, out / "drain.joblib")
-    joblib.dump({"vectorizer": vec, "normal_mean": np.asarray(X.mean(axis=0)).ravel(),
-                 "normal_std": np.ones(vec.n_features),
-                 "models": {"PCA": {"model": pca, "threshold": 0.5, "val_f1": 1.0}}}, out / "classical.joblib")
+    joblib.dump(
+        {
+            "vectorizer": vec,
+            "normal_mean": np.asarray(X.mean(axis=0)).ravel(),
+            "normal_std": np.ones(vec.n_features),
+            "models": {"PCA": {"model": pca, "threshold": 0.5, "val_f1": 1.0}},
+        },
+        out / "classical.joblib",
+    )
 
     monkeypatch.setattr(scoring, "ARTIFACTS_DIR", tmp_path)
     monkeypatch.setattr(api, "ARTIFACTS_DIR", tmp_path)
@@ -57,8 +68,8 @@ def test_health_and_models(client):
 
 
 def test_score_flags_session_with_failure_and_explains_it(client):
-    lines = [l.format(blk="blk_100") for l in NORMAL_SESSION]
-    lines += [l.format(blk="blk_200") for l in NORMAL_SESSION[:2]] + [FAILURE.format(blk="blk_200")] * 3
+    lines = [line.format(blk="blk_100") for line in NORMAL_SESSION]
+    lines += [line.format(blk="blk_200") for line in NORMAL_SESSION[:2]] + [FAILURE.format(blk="blk_200")] * 3
     lines.append("not a log line")
     body = client.post("/api/score", json={"dataset": "hdfs", "lines": lines}).json()
 

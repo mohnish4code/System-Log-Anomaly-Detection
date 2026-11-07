@@ -1,5 +1,6 @@
 """Load trained artifacts and score raw log lines. Shared by the API, the streaming
 replay and the dashboard."""
+
 import pickle
 import warnings
 from collections.abc import Sequence
@@ -26,8 +27,11 @@ def load_sequence_state(path: Path) -> dict:
     try:
         return torch.load(path, weights_only=True)
     except pickle.UnpicklingError:
-        warnings.warn(f"{path} is not loadable with weights_only=True; falling back to a full unpickle. "
-                      "Only do this for artifacts you trust, and re-train to upgrade the file.", stacklevel=2)
+        warnings.warn(
+            f"{path} is not loadable with weights_only=True; falling back to a full unpickle. "
+            "Only do this for artifacts you trust, and re-train to upgrade the file.",
+            stacklevel=2,
+        )
         return torch.load(path, weights_only=False)
 
 
@@ -73,8 +77,12 @@ class Scorer:
         self.models: dict[str, tuple] = {}
         for name, entry in classical["models"].items():
             det = entry["model"]
-            self.models[name] = (lambda seqs, det=det: det.score(self.vectorizer.transform(seqs)),
-                                 entry["threshold"], entry["val_f1"], det)
+            self.models[name] = (
+                lambda seqs, det=det: det.score(self.vectorizer.transform(seqs)),
+                entry["threshold"],
+                entry["val_f1"],
+                det,
+            )
         for arch in ("lstm", "transformer"):
             path = artifact_dir / f"{arch}.pt"
             if path.exists():
@@ -98,7 +106,7 @@ class Scorer:
         if isinstance(self._detector, SequenceDetector):
             _, surprise = self._detector.event_misses(events)
             best: dict[int, float] = {}
-            for e, s in zip(events, surprise):
+            for e, s in zip(events, surprise, strict=True):
                 best[e] = max(best.get(e, 0.0), float(s))
             ranked = sorted(best.items(), key=lambda kv: -kv[1])[:top_k]
             return [self._describe(e, events, f"unexpected at this point (surprise {s:.1f})") for e, s in ranked]
@@ -117,23 +125,37 @@ class Scorer:
                 break
             if col == self.vectorizer.unk_index_:
                 unseen = min((e for e in events if e not in known), default=UNMATCHED)
-                out.append({"event_id": int(unseen), "template": self._template(unseen),
-                            "count": int(counts[col]), "reason": "event type never seen in training"})
+                out.append(
+                    {
+                        "event_id": int(unseen),
+                        "template": self._template(unseen),
+                        "count": int(counts[col]),
+                        "reason": "event type never seen in training",
+                    }
+                )
             else:
                 direction = "more" if z[col] > 0 else "fewer"
-                out.append(self._describe(int(ids[col]), events,
-                                          f"{direction} than normal (typical {self.normal_mean[col]:.1f})"))
+                out.append(
+                    self._describe(
+                        int(ids[col]), events, f"{direction} than normal (typical {self.normal_mean[col]:.1f})"
+                    )
+                )
         return out
 
     def _template(self, event_id: int) -> str:
         return self.templates.get(event_id, "<no matching template>")
 
     def _describe(self, event_id: int, events: Sequence[int], reason: str) -> dict:
-        return {"event_id": int(event_id), "template": self._template(event_id),
-                "count": int(sum(e == event_id for e in events)), "reason": reason}
+        return {
+            "event_id": int(event_id),
+            "template": self._template(event_id),
+            "count": int(sum(e == event_id for e in events)),
+            "reason": reason,
+        }
 
-    def group_lines(self, lines: Sequence[str], window_seconds: int = 3600, learn: bool = False,
-                    max_raw: int = 50) -> tuple[dict[str, Session], int]:
+    def group_lines(
+        self, lines: Sequence[str], window_seconds: int = 3600, learn: bool = False, max_raw: int = 50
+    ) -> tuple[dict[str, Session], int]:
         """Parse and group lines. learn=False matches existing templates only (a request
         must not change the model's parser); learn=True lets Drain add new templates."""
         parse_line = LINE_PARSERS[self.dataset]
@@ -155,17 +177,24 @@ class Scorer:
         ordered = list(sessions.values())
         scores = self.score([s.events for s in ordered])
         results = []
-        for s, score in zip(ordered, scores):
+        for s, score in zip(ordered, scores, strict=True):
             flagged = bool(score >= self.threshold)
-            results.append({
-                "session_id": s.session_id,
-                "start_time": s.start_time,
-                "end_time": s.end_time,
-                "n_events": len(s.events),
-                "score": float(score),
-                "is_anomaly": flagged,
-                "top_events": self.explain(s.events, top_k) if flagged else [],
-            })
+            results.append(
+                {
+                    "session_id": s.session_id,
+                    "start_time": s.start_time,
+                    "end_time": s.end_time,
+                    "n_events": len(s.events),
+                    "score": float(score),
+                    "is_anomaly": flagged,
+                    "top_events": self.explain(s.events, top_k) if flagged else [],
+                }
+            )
         results.sort(key=lambda r: -r["score"])
-        return {"model": self.model_name, "threshold": float(self.threshold), "n_lines": len(lines),
-                "n_unparsed": unparsed, "sessions": results}
+        return {
+            "model": self.model_name,
+            "threshold": float(self.threshold),
+            "n_lines": len(lines),
+            "n_unparsed": unparsed,
+            "sessions": results,
+        }

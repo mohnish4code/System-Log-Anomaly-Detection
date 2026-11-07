@@ -6,6 +6,7 @@
 Output: data/sequences/<dataset>_sessions.parquet with one row per group:
     session_id, start_time, end_time, n_events, keyword_hits, label, events (ordered event IDs)
 """
+
 import argparse
 
 import numpy as np
@@ -15,15 +16,17 @@ from src.config import DATASETS, PARSED_DIR, RAW_DIR, SEQUENCES_DIR
 
 
 def _session_frame(session_id, start, end, events, keyword_hits, label) -> pd.DataFrame:
-    return pd.DataFrame({
-        "session_id": session_id,
-        "start_time": start,
-        "end_time": end,
-        "n_events": np.fromiter(map(len, events), dtype=np.int64, count=len(events)),
-        "keyword_hits": keyword_hits,
-        "label": label,
-        "events": events,
-    })
+    return pd.DataFrame(
+        {
+            "session_id": session_id,
+            "start_time": start,
+            "end_time": end,
+            "n_events": np.fromiter(map(len, events), dtype=np.int64, count=len(events)),
+            "keyword_hits": keyword_hits,
+            "label": label,
+            "events": events,
+        }
+    )
 
 
 def build_hdfs_sessions(parsed: pd.DataFrame, labels: pd.Series) -> pd.DataFrame:
@@ -44,7 +47,7 @@ def build_hdfs_sessions(parsed: pd.DataFrame, labels: pd.Series) -> pd.DataFrame
         session_id=[f"blk_{k}" for k in keys[starts]],
         start=np.minimum.reduceat(ts, starts),
         end=np.maximum.reduceat(ts, starts),
-        events=[ev[s:e].tolist() for s, e in zip(starts, ends)],
+        events=[ev[s:e].tolist() for s, e in zip(starts, ends, strict=True)],
         keyword_hits=np.add.reduceat(df["keyword"].to_numpy(dtype=np.int64), starts),
         label=session_labels.fillna(-1).to_numpy(dtype=np.int8),
     )
@@ -71,7 +74,7 @@ def build_time_windows(parsed: pd.DataFrame, window_seconds: int, step_seconds: 
         session_id=[f"w{int(t)}" for t in win_start],
         start=win_start,
         end=win_start + window_seconds,
-        events=[ev[a:b].tolist() for a, b in zip(lo, hi)],
+        events=[ev[a:b].tolist() for a, b in zip(lo, hi, strict=True)],
         keyword_hits=window_sum(df["keyword"].to_numpy(dtype=np.int64)),
         label=(window_sum(df["label"].to_numpy(dtype=np.int64)) > 0).astype(np.int8),
     )
@@ -97,14 +100,15 @@ def main() -> None:
     if args.dataset == "hdfs":
         sessions = build_hdfs_sessions(parsed, load_hdfs_labels())
     else:
-        sessions = build_time_windows(parsed.drop(columns="node"),
-                                      args.window_minutes * 60, args.step_minutes * 60)
+        sessions = build_time_windows(parsed.drop(columns="node"), args.window_minutes * 60, args.step_minutes * 60)
 
     SEQUENCES_DIR.mkdir(parents=True, exist_ok=True)
     out_path = SEQUENCES_DIR / f"{args.dataset}_sessions.parquet"
     sessions.to_parquet(out_path, index=False)
-    print(f"{len(sessions):,} groups, {sessions['label'].mean():.2%} anomalous, "
-          f"median length {sessions['n_events'].median():.0f} -> {out_path}")
+    print(
+        f"{len(sessions):,} groups, {sessions['label'].mean():.2%} anomalous, "
+        f"median length {sessions['n_events'].median():.0f} -> {out_path}"
+    )
 
 
 if __name__ == "__main__":

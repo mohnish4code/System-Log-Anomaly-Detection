@@ -1,4 +1,5 @@
 """Thin wrapper around drain3 with masking rules suited to system logs."""
+
 from drain3 import TemplateMiner
 from drain3.masking import MaskingInstruction
 from drain3.template_miner_config import TemplateMinerConfig

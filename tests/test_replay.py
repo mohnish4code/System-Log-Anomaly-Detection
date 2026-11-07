@@ -6,6 +6,7 @@ from src.streaming.replay import Replay
 
 class StubScorer:
     """Flags any session that has fewer than 3 events: an incomplete-looking session."""
+
     dataset = "hdfs"
     threshold = 0.5
 

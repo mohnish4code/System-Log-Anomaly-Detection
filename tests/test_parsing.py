@@ -2,12 +2,18 @@ from src.evaluation.parsing_accuracy import grouping_accuracy
 from src.parsing.drain import LogParser
 from src.parsing.log_formats import is_keyword_alert, parse_bgl_line, parse_hdfs_line
 
-HDFS_LINE = ("081109 203615 148 INFO dfs.DataNode$PacketResponder: Received block "
-             "blk_38865049064139660 of size 67108864 from /10.251.42.84\n")
-BGL_LINE = ("- 1117838570 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.42.50.675872 "
-            "R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected\n")
-BGL_ALERT = ("KERNDTLB 1118536327 2005.06.11 R30-M0-N9-C:J16-U01 2005-06-11-17.32.07.581048 "
-             "R30-M0-N9-C:J16-U01 RAS KERNEL FATAL data TLB error interrupt\n")
+HDFS_LINE = (
+    "081109 203615 148 INFO dfs.DataNode$PacketResponder: Received block "
+    "blk_38865049064139660 of size 67108864 from /10.251.42.84\n"
+)
+BGL_LINE = (
+    "- 1117838570 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.42.50.675872 "
+    "R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected\n"
+)
+BGL_ALERT = (
+    "KERNDTLB 1118536327 2005.06.11 R30-M0-N9-C:J16-U01 2005-06-11-17.32.07.581048 "
+    "R30-M0-N9-C:J16-U01 RAS KERNEL FATAL data TLB error interrupt\n"
+)
 
 
 def test_parse_hdfs_line():

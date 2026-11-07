@@ -5,6 +5,7 @@
 
 After `npm run build`, the API also serves the built UI at http://localhost:8000/.
 """
+
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -25,8 +26,10 @@ MAX_LINE_CHARS = 10_000  # real HDFS/BGL lines are a few hundred characters
 MAX_TOTAL_CHARS = 50_000_000
 MAX_BODY_BYTES = 64 * 1024 * 1024
 
-app = FastAPI(title="System Log Anomaly Detection",
-              description="Score raw HDFS or BGL log lines, explain flagged sessions, and browse results.")
+app = FastAPI(
+    title="System Log Anomaly Detection",
+    description="Score raw HDFS or BGL log lines, explain flagged sessions, and browse results.",
+)
 api = APIRouter(prefix="/api")
 
 
@@ -114,9 +117,10 @@ def datasets() -> list[dict]:
 @api.get("/{dataset}/models")
 def models(dataset: Dataset) -> dict:
     scorer = get_scorer(dataset, None)
-    return {"default": scorer.model_name,
-            "models": [{"name": n, "threshold": float(t), "val_f1": float(f)}
-                       for n, (_, t, f, _) in scorer.models.items()]}
+    return {
+        "default": scorer.model_name,
+        "models": [{"name": n, "threshold": float(t), "val_f1": float(f)} for n, (_, t, f, _) in scorer.models.items()],
+    }
 
 
 @api.get("/{dataset}/results")
@@ -135,8 +139,12 @@ def stream(dataset: Dataset) -> dict:
 
 
 @api.get("/{dataset}/alerts")
-def alerts(dataset: Dataset, outcome: Literal["true_alarm", "false_alarm"] | None = None,
-           limit: int = Query(25, ge=1, le=500), offset: int = Query(0, ge=0)) -> dict:
+def alerts(
+    dataset: Dataset,
+    outcome: Literal["true_alarm", "false_alarm"] | None = None,
+    limit: int = Query(25, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> dict:
     _require_trained(dataset)
     page = data.alerts(dataset, outcome, limit, offset)
     if page is None:

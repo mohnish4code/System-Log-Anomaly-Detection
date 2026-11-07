@@ -1,4 +1,5 @@
 """Event count vectors: how often each event type occurs in a session."""
+
 from collections.abc import Sequence
 
 import numpy as np
@@ -27,14 +28,18 @@ class EventCountVectorizer:
 
     def transform(self, sequences: Sequence[Sequence[int]]) -> sparse.csr_matrix:
         lengths = np.fromiter(map(len, sequences), dtype=np.int64, count=len(sequences))
-        flat = np.concatenate([np.asarray(s, dtype=np.int64) for s in sequences]) if lengths.sum() else \
-            np.empty(0, dtype=np.int64)
+        flat = (
+            np.concatenate([np.asarray(s, dtype=np.int64) for s in sequences])
+            if lengths.sum()
+            else np.empty(0, dtype=np.int64)
+        )
         in_range = (flat >= 0) & (flat < len(self._lookup))  # -1 marks a line no template matched
         cols = np.full(len(flat), self.unk_index_, dtype=np.int64)
         cols[in_range] = self._lookup[flat[in_range]]
         rows = np.repeat(np.arange(len(sequences)), lengths)
-        return sparse.csr_matrix((np.ones(len(flat), dtype=np.float64), (rows, cols)),
-                                 shape=(len(sequences), self.n_features))
+        return sparse.csr_matrix(
+            (np.ones(len(flat), dtype=np.float64), (rows, cols)), shape=(len(sequences), self.n_features)
+        )
 
     def fit_transform(self, sequences: Sequence[Sequence[int]]) -> sparse.csr_matrix:
         return self.fit(sequences).transform(sequences)

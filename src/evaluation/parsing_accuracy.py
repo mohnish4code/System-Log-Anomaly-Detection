@@ -6,6 +6,7 @@
 A line counts as correctly parsed only if the set of lines sharing its predicted
 template is exactly the set sharing its ground-truth template (Zhu et al., ICSE-SEIP'19).
 """
+
 import argparse
 
 import numpy as np
@@ -41,8 +42,10 @@ def main() -> None:
         parser = LogParser(sim_th=sim_th)
         pred = np.array([parser.parse(str(c)) for c in gt["Content"]])
         acc = grouping_accuracy(gt["EventId"].to_numpy(), pred)
-        print(f"sim_th={sim_th:.2f}  templates={len(np.unique(pred)):4d} "
-              f"(truth {gt['EventId'].nunique()})  grouping accuracy={acc:.3f}")
+        print(
+            f"sim_th={sim_th:.2f}  templates={len(np.unique(pred)):4d} "
+            f"(truth {gt['EventId'].nunique()})  grouping accuracy={acc:.3f}"
+        )
 
 
 if __name__ == "__main__":

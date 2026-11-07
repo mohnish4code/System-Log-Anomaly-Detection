@@ -6,8 +6,7 @@ from src.models.sequence import BOS, UNK, SequenceDetector, make_chunks
 
 def test_make_chunks_shifts_inputs_and_keeps_context():
     chunks = make_chunks(np.array([5, 6, 7, 8, 9]), max_len=2)
-    assert [(x.tolist(), y.tolist()) for x, y in chunks] == [
-        ([BOS, 5], [5, 6]), ([6, 7], [7, 8]), ([8], [9])]
+    assert [(x.tolist(), y.tolist()) for x, y in chunks] == [([BOS, 5], [5, 6]), ([6, 7], [7, 8]), ([8], [9])]
 
 
 @pytest.mark.parametrize("arch", ["lstm", "transformer"])

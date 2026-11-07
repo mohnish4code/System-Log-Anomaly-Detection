@@ -18,6 +18,7 @@ line for BGL, the session's first event for HDFS (HDFS labels are per session).
 
 Outputs results/stream/<dataset>_scores.csv (every group) and <dataset>_alerts.jsonl.
 """
+
 import argparse
 import json
 import time
@@ -37,8 +38,14 @@ STREAM_DIR = RESULTS_DIR / "stream"
 
 
 class Replay:
-    def __init__(self, scorer: Scorer, window_seconds: int, idle_seconds: int, labels: pd.Series | None,
-                 evict_seconds: int | None = None):
+    def __init__(
+        self,
+        scorer: Scorer,
+        window_seconds: int,
+        idle_seconds: int,
+        labels: pd.Series | None,
+        evict_seconds: int | None = None,
+    ):
         """evict_seconds (HDFS): drop a session from memory once it has no unscored events and
         has been quiet this long (default 10 x idle_seconds). Its scored record is kept."""
         self.scorer, self.window_seconds, self.idle_seconds = scorer, window_seconds, idle_seconds
@@ -51,15 +58,20 @@ class Replay:
 
     def _score(self, keys: list[str], now: int) -> None:
         sessions = [self.open[k] for k in keys]
-        for s, score in zip(sessions, self.scorer.score([s.events for s in sessions])):
+        for s, score in zip(sessions, self.scorer.score([s.events for s in sessions]), strict=True):
             rec = self.records.setdefault(s.session_id, {"session_id": s.session_id, "alert_time": None})
             label = s.label if self.labels is None else int(self.labels.get(int(s.session_id[4:]), 0))
-            rec.update(start_time=s.start_time, end_time=s.end_time, n_events=len(s.events),
-                       score=float(score), label=label, first_anomaly_time=s.first_anomaly_time)
+            rec.update(
+                start_time=s.start_time,
+                end_time=s.end_time,
+                n_events=len(s.events),
+                score=float(score),
+                label=label,
+                first_anomaly_time=s.first_anomaly_time,
+            )
             if score >= self.scorer.threshold and rec["alert_time"] is None:
                 rec["alert_time"] = now
-                self.alerts.append({**rec, "top_events": self.scorer.explain(s.events),
-                                    "raw_lines": list(s.raw_lines)})
+                self.alerts.append({**rec, "top_events": self.scorer.explain(s.events), "raw_lines": list(s.raw_lines)})
         self.dirty.difference_update(keys)
 
     def add(self, key: str, event_id: int, rec, raw: str, live: bool = True) -> None:
@@ -99,8 +111,16 @@ def _first_timestamp_after(log_path, byte_offset: int, parse_line) -> int | None
     return None
 
 
-def run(dataset: str, model: str | None, start_fraction: float, warmup_fraction: float, max_lines: int | None,
-        window_minutes: int, idle_minutes: int, speed: float) -> pd.DataFrame:
+def run(
+    dataset: str,
+    model: str | None,
+    start_fraction: float,
+    warmup_fraction: float,
+    max_lines: int | None,
+    window_minutes: int,
+    idle_minutes: int,
+    speed: float,
+) -> pd.DataFrame:
     if not 0 <= warmup_fraction <= start_fraction < 1:
         raise ValueError("need 0 <= warmup_fraction <= start_fraction < 1")
     scorer = Scorer(dataset, model)
@@ -170,13 +190,17 @@ def summarize(scores: pd.DataFrame, dataset: str) -> dict:
     y, alerted = scores["label"].astype(bool), scores["alerted"].astype(bool)
     m = alert_counts(y, alerted)
     print(f"\n{len(scores):,} groups, {int(y.sum()):,} anomalous, {int(alerted.sum()):,} alerts")
-    print(f"precision {_fmt(m['precision'])}  recall {_fmt(m['recall'])}  F1 {_fmt(m['f1'])}  "
-          f"(TP {m['tp']}, FP {m['fp']}, FN {m['fn']})")
+    print(
+        f"precision {_fmt(m['precision'])}  recall {_fmt(m['recall'])}  F1 {_fmt(m['f1'])}  "
+        f"(TP {m['tp']}, FP {m['fp']}, FN {m['fn']})"
+    )
 
     delay_min = detection_delay_minutes(scores, dataset)
     if len(delay_min):
-        print(f"detection delay (minutes): median {np.median(delay_min):.1f}, "
-              f"p90 {np.percentile(delay_min, 90):.1f}, max {delay_min.max():.1f}")
+        print(
+            f"detection delay (minutes): median {np.median(delay_min):.1f}, "
+            f"p90 {np.percentile(delay_min, 90):.1f}, max {delay_min.max():.1f}"
+        )
     return m
 
 
@@ -184,17 +208,30 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", choices=DATASETS, required=True)
     ap.add_argument("--model", help="model name; defaults to the best on validation F1")
-    ap.add_argument("--start-fraction", type=float, default=0.8,
-                    help="start scoring this far into the file (0.8 ≈ the test period)")
-    ap.add_argument("--warmup-fraction", type=float, default=0.0,
-                    help="read silently from here up to --start-fraction to build session history")
+    ap.add_argument(
+        "--start-fraction", type=float, default=0.8, help="start scoring this far into the file (0.8 ≈ the test period)"
+    )
+    ap.add_argument(
+        "--warmup-fraction",
+        type=float,
+        default=0.0,
+        help="read silently from here up to --start-fraction to build session history",
+    )
     ap.add_argument("--max-lines", type=int, help="stop after this many scored lines")
     ap.add_argument("--window-minutes", type=int, default=60, help="BGL window length")
     ap.add_argument("--idle-minutes", type=int, default=30, help="HDFS: score a session after this much quiet")
     ap.add_argument("--speed", type=float, default=0, help="log-seconds per wall-second; 0 = as fast as possible")
     args = ap.parse_args()
-    run(args.dataset, args.model, args.start_fraction, args.warmup_fraction, args.max_lines, args.window_minutes,
-        args.idle_minutes, args.speed)
+    run(
+        args.dataset,
+        args.model,
+        args.start_fraction,
+        args.warmup_fraction,
+        args.max_lines,
+        args.window_minutes,
+        args.idle_minutes,
+        args.speed,
+    )
 
 
 if __name__ == "__main__":

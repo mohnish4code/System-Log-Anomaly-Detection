@@ -10,13 +10,15 @@ from src.models.classical import default_models
 
 
 def test_hdfs_sessions_keep_line_order_and_labels():
-    parsed = pd.DataFrame({
-        "line_id": [0, 1, 2, 3, 4],
-        "timestamp": [10, 11, 12, 13, 14],
-        "event_id": [1, 1, 2, 3, 2],
-        "keyword": [False, False, False, True, False],
-        "block_id": [7, -5, 7, -5, 7],
-    })
+    parsed = pd.DataFrame(
+        {
+            "line_id": [0, 1, 2, 3, 4],
+            "timestamp": [10, 11, 12, 13, 14],
+            "event_id": [1, 1, 2, 3, 2],
+            "keyword": [False, False, False, True, False],
+            "block_id": [7, -5, 7, -5, 7],
+        }
+    )
     labels = pd.Series([0, 1], index=[7, -5])
     s = build_hdfs_sessions(parsed, labels).set_index("session_id")
     assert s.loc["blk_7", "events"] == [1, 2, 2]
@@ -26,13 +28,15 @@ def test_hdfs_sessions_keep_line_order_and_labels():
 
 
 def test_time_windows_label_if_any_line_anomalous():
-    parsed = pd.DataFrame({
-        "line_id": range(6),
-        "timestamp": [0, 30, 70, 130, 400, 410],
-        "event_id": [1, 2, 1, 3, 1, 1],
-        "keyword": [False] * 6,
-        "label": [0, 0, 0, 1, 0, 0],
-    })
+    parsed = pd.DataFrame(
+        {
+            "line_id": range(6),
+            "timestamp": [0, 30, 70, 130, 400, 410],
+            "event_id": [1, 2, 1, 3, 1, 1],
+            "keyword": [False] * 6,
+            "label": [0, 0, 0, 1, 0, 0],
+        }
+    )
     w = build_time_windows(parsed, window_seconds=60, step_seconds=60)
     assert w["events"].tolist() == [[1, 2], [1], [3], [1, 1]]  # empty windows dropped
     assert w["label"].tolist() == [0, 0, 1, 0]

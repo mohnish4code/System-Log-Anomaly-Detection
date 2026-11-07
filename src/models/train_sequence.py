@@ -6,6 +6,7 @@
 Models learn from normal training sessions only (semi-supervised, as in DeepLog).
 The alert threshold on the miss count is tuned on validation, as for every other model.
 """
+
 import argparse
 import time
 
@@ -19,8 +20,15 @@ from src.models.sequence import SequenceDetector
 from src.models.train import load_split, period_days
 
 
-def run(dataset: str, arch: str, epochs: int, top_g: int, max_len: int, purge_overlap: bool = False,
-        use_mlflow: bool = False) -> dict:
+def run(
+    dataset: str,
+    arch: str,
+    epochs: int,
+    top_g: int,
+    max_len: int,
+    purge_overlap: bool = False,
+    use_mlflow: bool = False,
+) -> dict:
     train, val, test = load_split(dataset, purge_overlap)
     normal_train = train.loc[train["label"] == 0, "events"]
 
@@ -41,9 +49,13 @@ def run(dataset: str, arch: str, epochs: int, top_g: int, max_len: int, purge_ov
     torch.save({**det.state(), "threshold": float(threshold), "val_f1": float(val_f1)}, artifact_dir / f"{arch}.pt")
     if use_mlflow:
         from src.evaluation.tracking import log_run
-        log_run(f"{dataset}-log-anomaly", det.name,
-                {"family": "sequence", "epochs": epochs, "top_g": top_g, "max_len": max_len},
-                {"val_f1": val_f1, "fit_seconds": fit_seconds, **metrics})
+
+        log_run(
+            f"{dataset}-log-anomaly",
+            det.name,
+            {"family": "sequence", "epochs": epochs, "top_g": top_g, "max_len": max_len},
+            {"val_f1": val_f1, "fit_seconds": fit_seconds, **metrics},
+        )
     return {"model": det.name, "threshold": threshold, "val_f1": val_f1, "fit_seconds": fit_seconds, **metrics}
 
 

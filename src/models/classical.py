@@ -1,5 +1,6 @@
 """Count-vector anomaly detectors. Every model exposes fit(X, y) and score(X),
 where a higher score means more anomalous."""
+
 import numpy as np
 from scipy import sparse
 from sklearn.decomposition import PCA
@@ -19,6 +20,7 @@ def _log_counts(X) -> sparse.csr_matrix:
 class PCADetector:
     """Xu et al. (SOSP'09): project TF-IDF weighted, mean-centred counts onto the principal
     subspace of normal behaviour; the anomaly score is the squared residual (SPE / Q-statistic)."""
+
     name = "PCA"
     supervised = False
 
@@ -77,8 +79,7 @@ class DecisionTreeDetector:
     supervised = True
 
     def __init__(self):
-        self.model = DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=5,
-                                            random_state=RANDOM_STATE)
+        self.model = DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=5, random_state=RANDOM_STATE)
 
     def fit(self, X, y) -> "DecisionTreeDetector":
         self.model.fit(X, y)

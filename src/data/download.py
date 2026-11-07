@@ -1,9 +1,10 @@
 """Download Loghub datasets into data/raw/<dataset>/.
 
-    python -m src.data.download --dataset hdfs
-    python -m src.data.download --dataset bgl
-    python -m src.data.download --dataset hdfs --sample   # 2k labelled-template sample only
+python -m src.data.download --dataset hdfs
+python -m src.data.download --dataset bgl
+python -m src.data.download --dataset hdfs --sample   # 2k labelled-template sample only
 """
+
 import argparse
 import shutil
 import urllib.request

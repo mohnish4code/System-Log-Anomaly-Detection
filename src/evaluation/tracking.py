@@ -1,7 +1,8 @@
 """Optional MLflow logging to a local SQLite store. View with:
 
-    mlflow ui --backend-store-uri sqlite:///mlflow.db
+mlflow ui --backend-store-uri sqlite:///mlflow.db
 """
+
 from src.config import ROOT
 
 TRACKING_URI = f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}"

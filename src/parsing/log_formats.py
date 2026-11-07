@@ -1,4 +1,5 @@
 """Line-level parsers that split a raw log line into header fields and free-text content."""
+
 import calendar
 import re
 from dataclasses import dataclass
@@ -28,8 +29,9 @@ def is_keyword_alert(level: str, content: str) -> bool:
 @lru_cache(maxsize=4096)
 def _hdfs_epoch(date: str, time: str) -> int:
     # Dates are yymmdd / hhmmss; consecutive lines repeat them, hence the cache.
-    return calendar.timegm((2000 + int(date[:2]), int(date[2:4]), int(date[4:6]),
-                            int(time[:2]), int(time[2:4]), int(time[4:6]), 0, 0, 0))
+    return calendar.timegm(
+        (2000 + int(date[:2]), int(date[2:4]), int(date[4:6]), int(time[:2]), int(time[2:4]), int(time[4:6]), 0, 0, 0)
+    )
 
 
 _HDFS_RE = re.compile(r"^(\d{6}) (\d{6}) \d+ (\w+) ([^:]+): (.*)$")

@@ -4,6 +4,7 @@ The model reads a session's events in order and predicts each next event. An eve
 is a "miss" when it is not among the model's top-g predictions; sessions with more
 misses are more anomalous. Models train on normal sessions only.
 """
+
 from collections.abc import Sequence
 
 import numpy as np
@@ -28,8 +29,9 @@ class EventVocab:
 
 
 class NextEventLSTM(nn.Module):
-    def __init__(self, vocab_size: int, embed_dim: int = 32, hidden_dim: int = 64, num_layers: int = 2,
-                 max_len: int = 128):
+    def __init__(
+        self, vocab_size: int, embed_dim: int = 32, hidden_dim: int = 64, num_layers: int = 2, max_len: int = 128
+    ):
         super().__init__()
         self.embed = nn.Embedding(vocab_size, embed_dim, padding_idx=PAD)
         self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=num_layers, batch_first=True)
@@ -41,13 +43,21 @@ class NextEventLSTM(nn.Module):
 
 
 class NextEventTransformer(nn.Module):
-    def __init__(self, vocab_size: int, d_model: int = 64, nhead: int = 4, num_layers: int = 2,
-                 max_len: int = 128, dropout: float = 0.1):
+    def __init__(
+        self,
+        vocab_size: int,
+        d_model: int = 64,
+        nhead: int = 4,
+        num_layers: int = 2,
+        max_len: int = 128,
+        dropout: float = 0.1,
+    ):
         super().__init__()
         self.embed = nn.Embedding(vocab_size, d_model, padding_idx=PAD)
         self.pos = nn.Embedding(max_len, d_model)
-        layer = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward=2 * d_model, dropout=dropout,
-                                           batch_first=True)
+        layer = nn.TransformerEncoderLayer(
+            d_model, nhead, dim_feedforward=2 * d_model, dropout=dropout, batch_first=True
+        )
         self.encoder = nn.TransformerEncoder(layer, num_layers, enable_nested_tensor=False)
         self.out = nn.Linear(d_model, vocab_size)
 
@@ -65,7 +75,7 @@ def make_chunks(encoded: np.ndarray, max_len: int) -> list[tuple[np.ndarray, np.
     """Split one encoded session into (input, target) pairs of at most max_len steps.
     The first input starts with BOS; later chunks start with the previous event."""
     shifted = np.r_[BOS, encoded[:-1]]
-    return [(shifted[i:i + max_len], encoded[i:i + max_len]) for i in range(0, len(encoded), max_len)]
+    return [(shifted[i : i + max_len], encoded[i : i + max_len]) for i in range(0, len(encoded), max_len)]
 
 
 def _pad_batch(pairs: list[tuple[np.ndarray, np.ndarray]]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -73,15 +83,15 @@ def _pad_batch(pairs: list[tuple[np.ndarray, np.ndarray]]) -> tuple[torch.Tensor
     xs = np.zeros((len(pairs), T), dtype=np.int64)
     ys = np.zeros((len(pairs), T), dtype=np.int64)
     for i, (x, y) in enumerate(pairs):
-        xs[i, :len(x)] = x
-        ys[i, :len(y)] = y
+        xs[i, : len(x)] = x
+        ys[i, : len(y)] = y
     return torch.from_numpy(xs), torch.from_numpy(ys)
 
 
 def _length_batches(lengths: np.ndarray, batch_size: int, rng: np.random.Generator | None = None) -> list[np.ndarray]:
     # Grouping similar lengths keeps padding (wasted compute) low.
     order = np.argsort(lengths, kind="stable")
-    batches = [order[i:i + batch_size] for i in range(0, len(order), batch_size)]
+    batches = [order[i : i + batch_size] for i in range(0, len(order), batch_size)]
     if rng is not None:
         rng.shuffle(batches)
     return batches
@@ -90,8 +100,16 @@ def _length_batches(lengths: np.ndarray, batch_size: int, rng: np.random.Generat
 class SequenceDetector:
     supervised = False
 
-    def __init__(self, arch: str = "lstm", top_g: int = 9, max_len: int = 128, epochs: int = 10,
-                 batch_size: int = 128, lr: float = 1e-3, seed: int = 42):
+    def __init__(
+        self,
+        arch: str = "lstm",
+        top_g: int = 9,
+        max_len: int = 128,
+        epochs: int = 10,
+        batch_size: int = 128,
+        lr: float = 1e-3,
+        seed: int = 42,
+    ):
         self.arch, self.top_g, self.max_len = arch, top_g, max_len
         self.epochs, self.batch_size, self.lr, self.seed = epochs, batch_size, lr, seed
         self.name = {"lstm": "LSTM (DeepLog-style)", "transformer": "Transformer"}[arch]
@@ -135,8 +153,8 @@ class SequenceDetector:
         misses, surprise = [], []
         for x, y in make_chunks(encoded, self.max_len):
             m, s = self._score_chunks([(x, y)])
-            misses.append(m[0][:len(y)])
-            surprise.append(s[0][:len(y)])
+            misses.append(m[0][: len(y)])
+            surprise.append(s[0][: len(y)])
         return np.concatenate(misses), np.concatenate(surprise)
 
     def _score_chunks(self, pairs) -> tuple[np.ndarray, np.ndarray]:
@@ -172,12 +190,17 @@ class SequenceDetector:
             np.maximum.at(max_surprise, owner[idx], surprise.max(1))
 
         per_unique = n_miss + max_surprise / (1.0 + max_surprise)
-        lookup = dict(zip(unique, per_unique))
+        lookup = dict(zip(unique, per_unique, strict=True))
         return np.array([lookup[k] for k in keys])
 
     def state(self) -> dict:
-        return {"arch": self.arch, "top_g": self.top_g, "max_len": self.max_len,
-                "vocab": self.vocab_.index_, "weights": self.model_.state_dict()}
+        return {
+            "arch": self.arch,
+            "top_g": self.top_g,
+            "max_len": self.max_len,
+            "vocab": self.vocab_.index_,
+            "weights": self.model_.state_dict(),
+        }
 
     @classmethod
     def from_state(cls, state: dict) -> "SequenceDetector":
