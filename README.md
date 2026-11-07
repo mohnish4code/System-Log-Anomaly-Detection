@@ -1,4 +1,8 @@
-# 🖥️ System Log Anomaly Detection
+# System Log Anomaly Detection
+
+[![tests](https://github.com/mohnish4code/System-Log-Anomaly-Detection/actions/workflows/tests.yml/badge.svg)](https://github.com/mohnish4code/System-Log-Anomaly-Detection/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Detecting **abnormal behaviour in large-scale computer systems from their log files**, so engineers are alerted to failures before they escalate into outages.
 
@@ -8,11 +12,29 @@ The pipeline turns raw, unstructured log text into structured events and uses a 
 Raw log lines  →  Log templates  →  Event sequences  →  Anomaly score  →  Alert + explanation
 ```
 
+**Tech stack:** Python, drain3, scikit-learn, PyTorch, FastAPI, React + TypeScript + Vite, Docker, MLflow, GitHub Actions.
+
 ![Monitoring view](docs/screenshots/monitoring.png)
+
+## Contents
+
+- [Status](#status)
+- [Problem](#problem)
+- [Datasets](#datasets)
+- [Approach](#approach)
+- [Results](#results)
+- [Findings](#findings)
+- [Web app](#web-app)
+- [How to run](#how-to-run)
+- [API](#api)
+- [Project structure](#project-structure)
+- [Future work](#future-work)
+- [License](#license)
+- [Author](#author)
 
 ---
 
-## ✅ Status
+## Status
 
 **Complete.** All phases are implemented, trained on the full datasets and evaluated:
 
@@ -21,11 +43,11 @@ Raw log lines  →  Log templates  →  Event sequences  →  Anomaly score  →
 | 1 · Pipeline | Download, Drain parsing, grouping, chronological split, count vectors, rule / PCA / Isolation Forest / supervised baselines |
 | 2 · Deep models | DeepLog-style LSTM and a causal Transformer for next-event prediction |
 | 3 · Deployment | Streaming replay with detection delay, FastAPI backend, React frontend |
-| 4 · Engineering | MLflow tracking, Docker, GitHub Actions CI, 25 automated tests, 5 executed notebooks |
+| 4 · Engineering | MLflow tracking, Docker, GitHub Actions CI, 45 automated tests, 5 executed notebooks |
 
 ---
 
-## 📌 Problem
+## Problem
 
 Modern software systems (cloud platforms, distributed storage, supercomputers, microservices) write millions of log lines every day. Failures usually leave traces in these logs before users notice a problem, but:
 
@@ -37,7 +59,7 @@ Log anomaly detection is a core part of **AIOps** (AI for IT Operations). It hel
 
 ---
 
-## 📊 Datasets
+## Datasets
 
 Both datasets come from **[Loghub](https://github.com/logpai/loghub)**, a public collection of real system logs maintained by the LogPAI research group.
 
@@ -59,7 +81,7 @@ Both datasets come from **[Loghub](https://github.com/logpai/loghub)**, a public
 
 ---
 
-## 🔧 Approach
+## Approach
 
 ```
 Raw Logs (.log)
@@ -113,7 +135,7 @@ Each model's alert threshold maximises F1 on the **validation** split. It is the
 
 ---
 
-## 📈 Results
+## Results
 
 ### Offline evaluation (test split)
 
@@ -152,7 +174,7 @@ The last 20% of each log is replayed line by line. Lines are parsed online, grou
 
 ---
 
-## 🧗 Findings
+## Findings
 
 1. **Simple models are hard to beat on HDFS.** With labels, a decision tree on event counts reaches F1 0.995. Without labels, PCA reaches 0.793, the best label-free result.
 2. **The deep sequence models did not beat simpler methods here.** They scored 0.85 F1 on validation but 0.62–0.66 on test. The test period is the last ~2.5 hours of the HDFS log, so most sessions are cut off by the end of the file: only 40% of normal test sessions reach their final "delete" stage, against 93% in training. Unfinished normal sessions look abnormal to a model that learned complete ones. Anomalous test sessions are also very short (median 4 events), which leaves little order to learn from. A random split would have hidden this.
@@ -164,7 +186,7 @@ The last 20% of each log is replayed line by line. Lines are parsed online, grou
 
 ---
 
-## 🌐 Web app
+## Web app
 
 FastAPI serves both the JSON API and the built React app, so the whole project runs as one service on one port.
 
@@ -195,9 +217,9 @@ Light and dark themes, phone-width layout, and links to each page (e.g. `#/bgl/m
 
 ---
 
-## ▶️ How to run
+## How to run
 
-Requirements: Python 3.11+, Node 20+, ~3 GB free disk.
+Requirements: Python 3.12+, Node 22+ (LTS), ~3 GB free disk.
 
 ```bash
 git clone https://github.com/mohnish4code/System-Log-Anomaly-Detection.git
@@ -207,7 +229,10 @@ python -m venv venv
 source venv/bin/activate                   # Windows: venv\Scripts\activate
 pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
+pip install -r requirements-dev.txt        # optional: pytest, coverage, ruff
 ```
+
+`requirements.txt` holds the runtime dependencies (the Docker image installs only these). `requirements-dev.txt` adds the test and lint tools on top of it.
 
 **Train (per dataset; replace `hdfs` with `bgl` for the second):**
 ```bash
@@ -231,13 +256,18 @@ For frontend development, run `uvicorn src.api.main:app --reload` and `npm run d
 
 **Docker:**
 ```bash
+docker compose up --build
+# or
 docker build -t log-anomaly .
 docker run -p 8000:8000 -v ./artifacts:/app/artifacts -v ./data:/app/data -v ./results:/app/results log-anomaly
 ```
+The container runs as a non-root user and reports its health from `/api/health`.
 
 **Other:**
 ```bash
-pytest                                                # 25 tests
+pytest                                                # 45 tests (needs requirements-dev.txt)
+pytest --cov=src                                      # with coverage
+ruff check . && ruff format --check .                 # lint, as in CI
 python -m src.data.download --dataset hdfs --sample   # 2k labelled lines
 python -m src.evaluation.parsing_accuracy --dataset hdfs
 pip install -r requirements-mlflow.txt                # optional tracking
@@ -256,7 +286,7 @@ BGL is slower because its hourly windows hold up to thousands of events each.
 
 ---
 
-## 🔌 API
+## API
 
 Interactive docs at `http://localhost:8000/docs`.
 
@@ -282,7 +312,7 @@ Each scored session in the response includes `score`, `is_anomaly`, and `top_eve
 
 ---
 
-## 📁 Project structure
+## Project structure
 
 ```
 ├── src/
@@ -301,18 +331,31 @@ Each scored session in the response includes `score`, `is_anomaly`, and `top_eve
 ├── results/                    # metric tables per dataset
 ├── tests/                      # pytest suite (parsing, pipeline, models, API, replay)
 ├── docs/screenshots/
+├── requirements.txt            # runtime dependencies
+├── requirements-dev.txt        # + pytest, pytest-cov, httpx, ruff
 ├── Dockerfile                  # Node build stage + Python runtime
-└── .github/workflows/tests.yml # backend tests + frontend build on every push
+├── docker-compose.yml          # one service with the three data mounts
+└── .github/workflows/tests.yml # lint, backend tests (3.12, 3.13) + frontend build on every push
 ```
 
 Not committed (regenerated by the commands above): `data/`, `artifacts/`, `results/stream/`, `mlflow.db`.
 
 ---
 
-## 🔮 Future work
+## Future work
 
 - Handling **log format changes** after software updates, a common cause of model degradation in production
 - Scoring partial sessions as they progress, to cut detection delay below the idle timeout
 - Root-cause hints across sessions: the component or node behind a burst of alerts
 - Combining logs with system metrics such as CPU, memory and latency
 - More Loghub datasets (Thunderbird, OpenStack, Hadoop)
+
+---
+
+## License
+
+[MIT](LICENSE)
+
+## Author
+
+**Mohnish Shandilya** · [GitHub](https://github.com/mohnish4code)
