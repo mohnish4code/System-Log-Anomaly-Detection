@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import ARTIFACTS_DIR, DATASETS, PARSED_DIR, RESULTS_DIR, SEQUENCES_DIR, TRAIN_FRAC
+from src.evaluation.metrics import alert_counts, detection_delay_minutes
 from src.evaluation.report import load_results
 
 STREAM_DIR = RESULTS_DIR / "stream"
@@ -91,6 +92,10 @@ def _stream(dataset: str, _key: tuple) -> tuple[pd.DataFrame, pd.DataFrame, dict
     return scores, alerts.sort_values("score", ascending=False), details
 
 
+def has_stream(dataset: str) -> bool:
+    return all(p.exists() for p in _stream_paths(dataset))
+
+
 def _load_stream(dataset: str):
     paths = _stream_paths(dataset)
     if not all(p.exists() for p in paths):
@@ -102,18 +107,10 @@ def stream_summary(dataset: str) -> dict | None:
     loaded = _load_stream(dataset)
     if loaded is None:
         return None
-    scores, alerts, _ = loaded
+    scores, _, _ = loaded
     y, alerted = scores["label"].astype(bool), scores["alerted"].astype(bool)
-    tp, fp, fn = int((alerted & y).sum()), int((alerted & ~y).sum()), int((~alerted & y).sum())
-    precision = tp / (tp + fp) if tp + fp else None
-    recall = tp / (tp + fn) if tp + fn else None
-    f1 = 2 * precision * recall / (precision + recall) if precision and recall else None
-
-    hits = scores[alerted & y]
-    if "started_live" in hits:
-        hits = hits[hits["started_live"].astype(bool)]
-    began = hits["first_anomaly_time"].fillna(hits["start_time"]) if dataset == "bgl" else hits["start_time"]
-    delay = (hits["alert_time"] - began) / 60
+    counts = alert_counts(y, alerted)
+    delay = detection_delay_minutes(scores, dataset)
 
     bucket = 3600 if dataset == "hdfs" else 86400  # BGL spans months: bin by day
     t = (scores["start_time"] // bucket) * bucket
@@ -122,7 +119,7 @@ def stream_summary(dataset: str) -> dict | None:
                 .groupby("t").sum().reset_index())
     return {
         "groups": len(scores), "anomalous": int(y.sum()), "alerts": int(alerted.sum()),
-        "tp": tp, "fp": fp, "fn": fn, "precision": precision, "recall": recall, "f1": f1,
+        **counts,
         "delay_minutes": {"median": float(delay.median()), "p90": float(delay.quantile(0.9)),
                           "max": float(delay.max())} if len(delay) else None,
         "bucket_seconds": bucket,
