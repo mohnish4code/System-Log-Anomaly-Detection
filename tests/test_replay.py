@@ -1,5 +1,8 @@
 import numpy as np
+import pandas as pd
+import pytest
 
+import src.streaming.replay as replay_mod
 from src.parsing.log_formats import LogRecord
 from src.streaming.replay import Replay
 
@@ -59,3 +62,67 @@ def test_session_without_warmup_history_alerts():
     replay.finish(1100)
     assert replay.records["blk_9"]["alert_time"] == 1100
     assert len(replay.alerts) == 1
+
+
+# --- run(): the whole replay over a small log file ---------------------------------------
+
+HDFS_LINE = "081109 {hms} 148 INFO dfs.DataNode$DataXceiver: event for block {blk}"
+
+
+class StubParser:
+    def parse(self, content):
+        return 1
+
+
+class RunScorer(StubScorer):
+    model_name = "stub"
+    parser = StubParser()
+
+    def __init__(self, dataset, model=None):
+        pass
+
+
+@pytest.fixture
+def run_env(tmp_path, monkeypatch):
+    log = tmp_path / "HDFS.log"
+    monkeypatch.setattr(replay_mod, "Scorer", RunScorer)
+    monkeypatch.setattr(replay_mod, "find_raw_log", lambda dataset: log)
+    monkeypatch.setattr(replay_mod, "load_hdfs_labels", lambda: pd.Series(dtype=int))
+    monkeypatch.setattr(replay_mod, "STREAM_DIR", tmp_path / "stream")
+    return log
+
+
+def _run(warmup_fraction=0.0, start_fraction=0.0, max_lines=None):
+    return replay_mod.run("hdfs", None, start_fraction, warmup_fraction, max_lines, 60, 30, 0)
+
+
+def test_run_empty_file_reports_and_returns_empty(run_env, capsys):
+    run_env.write_text("")
+    assert _run().empty
+    assert "Nothing to replay" in capsys.readouterr().out
+    assert not (run_env.parent / "stream").exists()
+
+
+def test_run_max_lines_zero_scores_nothing(run_env, capsys):
+    run_env.write_text("".join(HDFS_LINE.format(hms=f"2036{i:02d}", blk="blk_1") + "\n" for i in range(5)))
+    assert _run(max_lines=0).empty
+    assert "Nothing was scored" in capsys.readouterr().out
+
+
+def test_run_warmup_gives_sessions_their_history(run_env):
+    early = [HDFS_LINE.format(hms=f"2036{i:02d}", blk="blk_1") for i in range(3)]
+    late = [HDFS_LINE.format(hms="204000", blk="blk_1"), HDFS_LINE.format(hms="204001", blk="blk_2")]
+    head = "".join(line + "\n" for line in early)
+    run_env.write_text(head + "".join(line + "\n" for line in late))
+    # Land on the newline that ends the early part, so scoring starts at the first late line.
+    start = (len(head) - 0.5) / run_env.stat().st_size
+
+    with_warmup = _run(warmup_fraction=0.0, start_fraction=start).set_index("session_id")
+    assert with_warmup.loc["blk_1", "n_events"] == 4  # 3 warm-up events + 1 live
+    assert not with_warmup.loc["blk_1", "alerted"] and not with_warmup.loc["blk_1", "started_live"]
+    assert with_warmup.loc["blk_2", "started_live"]
+
+    cold = _run(warmup_fraction=start, start_fraction=start).set_index("session_id")
+    assert cold.loc["blk_1", "n_events"] == 1  # seen only from its tail: looks truncated
+    assert cold.loc["blk_1", "alerted"]
+    assert (run_env.parent / "stream" / "hdfs_scores.csv").exists()

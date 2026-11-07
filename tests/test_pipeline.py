@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.evaluation.metrics import best_f1_threshold, evaluate
+from src.evaluation.metrics import alert_counts, best_f1_threshold, detection_delay_minutes, evaluate
 from src.features.count_vectors import EventCountVectorizer
 from src.grouping.build_sequences import build_hdfs_sessions, build_time_windows
 from src.grouping.split import chronological_split
@@ -57,6 +57,50 @@ def test_chronological_split_has_no_time_overlap():
 
     with pytest.raises(ValueError):
         chronological_split(sessions, 0.8, 0.3)
+
+
+def test_chronological_split_purges_overlapping_windows():
+    # Sliding 60 s windows every 30 s: each window shares half its span with the next one.
+    start = np.arange(10) * 30
+    windows = pd.DataFrame({"start_time": start, "end_time": start + 60, "label": 0})
+    train, val, test = chronological_split(windows, 0.6, 0.2, purge_overlap=True)
+    assert train["start_time"].tolist() == [0, 30, 60, 90, 120, 150]
+    assert val["start_time"].tolist() == [210]  # 180 overlaps the last train window (ends at 210)
+    assert test["start_time"].tolist() == [270]  # 240 overlaps the kept val window (ends at 270)
+    assert val["start_time"].min() >= train["end_time"].max()
+    assert test["start_time"].min() >= val["end_time"].max()
+
+    # Back-to-back windows that only touch are not overlapping, so nothing is dropped.
+    touching = pd.DataFrame({"start_time": start, "end_time": start + 30, "label": 0})
+    parts = chronological_split(touching, 0.6, 0.2, purge_overlap=True)
+    assert [len(p) for p in parts] == [6, 2, 2]
+
+
+def test_alert_counts_distinguish_zero_from_undefined():
+    m = alert_counts([1, 0, 1, 0], [1, 1, 0, 0])
+    assert (m["tp"], m["fp"], m["fn"]) == (1, 1, 1) and m["f1"] == 0.5
+    m = alert_counts([1, 0], [0, 1])  # one false alarm, one miss
+    assert (m["precision"], m["recall"], m["f1"]) == (0.0, 0.0, 0.0)
+    m = alert_counts([1, 0], [0, 0])  # nothing flagged
+    assert (m["precision"], m["recall"], m["f1"]) == (None, 0.0, None)
+    m = alert_counts([0, 0], [1, 0])  # no positives
+    assert (m["precision"], m["recall"], m["f1"]) == (0.0, None, None)
+
+
+def test_detection_delay_uses_first_anomalous_line_for_bgl():
+    scores = pd.DataFrame(
+        {
+            "alerted": [True, True, True, False],
+            "label": [1, 1, 0, 1],
+            "start_time": [0, 0, 0, 0],
+            "first_anomaly_time": [600, None, None, None],
+            "alert_time": [1200, 1800, 60, None],
+            "started_live": [True, True, True, True],
+        }
+    )
+    assert detection_delay_minutes(scores, "bgl").tolist() == [10.0, 30.0]
+    assert detection_delay_minutes(scores, "hdfs").tolist() == [20.0, 30.0]
+    assert detection_delay_minutes(scores.assign(started_live=False), "hdfs").empty
 
 
 def test_vectorizer_maps_unseen_events_to_unk():
