@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: log-anomaly
+    ports:
+      - "8000:8000"
+    volumes:
+      # Produced by the training pipeline and the streaming replay on the host.
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
+      - ./results:/app/results
+    restart: unless-stopped
