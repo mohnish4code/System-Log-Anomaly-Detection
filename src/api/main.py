@@ -6,11 +6,12 @@
 After `npm run build`, the API also serves the built UI at http://localhost:8000/.
 """
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, FastAPI, HTTPException, Query
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from src.api import data
 from src.config import ARTIFACTS_DIR, ROOT
@@ -18,19 +19,43 @@ from src.scoring import Scorer
 
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 
+# Limits for POST /api/score.
+MAX_LINES = 200_000
+MAX_LINE_CHARS = 10_000  # real HDFS/BGL lines are a few hundred characters
+MAX_TOTAL_CHARS = 50_000_000
+MAX_BODY_BYTES = 64 * 1024 * 1024
+
 app = FastAPI(title="System Log Anomaly Detection",
               description="Score raw HDFS or BGL log lines, explain flagged sessions, and browse results.")
 api = APIRouter(prefix="/api")
 
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """Reject oversized bodies from their declared length, before they are read and parsed."""
+    length = request.headers.get("content-length")
+    if length is not None and length.isdigit() and int(length) > MAX_BODY_BYTES:
+        return JSONResponse({"detail": f"Request body exceeds {MAX_BODY_BYTES // (1024 * 1024)} MB"}, 413)
+    return await call_next(request)
+
+
 Dataset = Literal["hdfs", "bgl"]
+LogLine = Annotated[str, StringConstraints(max_length=MAX_LINE_CHARS)]
 
 
 class ScoreRequest(BaseModel):
     dataset: Dataset
-    lines: list[str] = Field(min_length=1, max_length=200_000)
+    lines: list[LogLine] = Field(min_length=1, max_length=MAX_LINES)
     model: str | None = Field(None, description="defaults to the best model on validation F1")
     window_minutes: int = Field(60, ge=1, description="BGL time-window length")
     top_k: int = Field(3, ge=1, le=20, description="events to report per flagged session")
+
+    @field_validator("lines")
+    @classmethod
+    def _total_size(cls, lines: list[str]) -> list[str]:
+        if sum(map(len, lines)) > MAX_TOTAL_CHARS:
+            raise ValueError(f"lines exceed {MAX_TOTAL_CHARS:,} characters in total")
+        return lines
 
 
 class EventContribution(BaseModel):
@@ -68,6 +93,9 @@ def get_scorer(dataset: str, model: str | None) -> Scorer:
         raise HTTPException(404, str(e)) from e
 
 
+_NO_REPLAY = "No replay yet. Run: python -m src.streaming.replay --dataset {dataset}"
+
+
 def _require_trained(dataset: str) -> None:
     if dataset not in data.trained_datasets():
         raise HTTPException(503, f"No trained artifacts for {dataset}. Run the training pipeline first.")
@@ -102,21 +130,25 @@ def stream(dataset: Dataset) -> dict:
     _require_trained(dataset)
     summary = data.stream_summary(dataset)
     if summary is None:
-        raise HTTPException(404, f"No replay yet. Run: python -m src.streaming.replay --dataset {dataset}")
+        raise HTTPException(404, _NO_REPLAY.format(dataset=dataset))
     return summary
 
 
 @api.get("/{dataset}/alerts")
 def alerts(dataset: Dataset, outcome: Literal["true_alarm", "false_alarm"] | None = None,
            limit: int = Query(25, ge=1, le=500), offset: int = Query(0, ge=0)) -> dict:
+    _require_trained(dataset)
     page = data.alerts(dataset, outcome, limit, offset)
     if page is None:
-        raise HTTPException(404, "No replay yet")
+        raise HTTPException(404, _NO_REPLAY.format(dataset=dataset))
     return page
 
 
 @api.get("/{dataset}/alerts/{session_id}")
 def alert_detail(dataset: Dataset, session_id: str) -> dict:
+    _require_trained(dataset)
+    if not data.has_stream(dataset):
+        raise HTTPException(404, _NO_REPLAY.format(dataset=dataset))
     detail = data.alert_detail(dataset, session_id)
     if detail is None:
         raise HTTPException(404, f"No alert for {session_id}")
