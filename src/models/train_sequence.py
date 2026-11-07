@@ -37,7 +37,8 @@ def run(dataset: str, arch: str, epochs: int, top_g: int, max_len: int, purge_ov
 
     artifact_dir = ARTIFACTS_DIR / dataset
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    torch.save({**det.state(), "threshold": threshold, "val_f1": val_f1}, artifact_dir / f"{arch}.pt")
+    # Plain Python floats so the file loads with torch.load(weights_only=True).
+    torch.save({**det.state(), "threshold": float(threshold), "val_f1": float(val_f1)}, artifact_dir / f"{arch}.pt")
     if use_mlflow:
         from src.evaluation.tracking import log_run
         log_run(f"{dataset}-log-anomaly", det.name,

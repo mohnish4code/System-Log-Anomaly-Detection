@@ -1,7 +1,10 @@
 """Load trained artifacts and score raw log lines. Shared by the API, the streaming
 replay and the dashboard."""
+import pickle
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -12,6 +15,20 @@ from src.models.sequence import SequenceDetector
 from src.parsing.log_formats import BLOCK_RE, LINE_PARSERS, LogRecord
 
 UNMATCHED = -1  # event ID for lines that match no known template
+
+
+def load_sequence_state(path: Path) -> dict:
+    """Load a saved sequence model with weights_only=True (no arbitrary unpickling).
+
+    Older artifacts may hold numpy scalars that the safe loader rejects; those fall back
+    to a full unpickle with a warning. Re-train to get a safe artifact.
+    """
+    try:
+        return torch.load(path, weights_only=True)
+    except pickle.UnpicklingError:
+        warnings.warn(f"{path} is not loadable with weights_only=True; falling back to a full unpickle. "
+                      "Only do this for artifacts you trust, and re-train to upgrade the file.", stacklevel=2)
+        return torch.load(path, weights_only=False)
 
 
 @dataclass
@@ -61,9 +78,9 @@ class Scorer:
         for arch in ("lstm", "transformer"):
             path = artifact_dir / f"{arch}.pt"
             if path.exists():
-                state = torch.load(path, weights_only=False)
+                state = load_sequence_state(path)
                 det = SequenceDetector.from_state(state)
-                self.models[det.name] = (det.score, state["threshold"], state["val_f1"], det)
+                self.models[det.name] = (det.score, float(state["threshold"]), float(state["val_f1"]), det)
 
         # Default to the best model on *validation* F1; test results never drive this choice.
         self.model_name = model or max(self.models, key=lambda n: self.models[n][2])
