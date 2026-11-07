@@ -13,3 +13,7 @@ __pycache__/
 
 /frontend/node_modules/
 /frontend/dist/
+
+# Local assistant/editor config
+/.claude/
+CLAUDE.md
