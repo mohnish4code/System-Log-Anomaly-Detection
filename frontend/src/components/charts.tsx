@@ -40,7 +40,7 @@ export function ModelChart({ results, metric, theme }: { results: ModelResult[];
           axisLine={false} tickLine={false} />
         <Tooltip cursor={{ fill: c.cursor, opacity: 0.25 }} content={<ModelTooltip />} />
         <Bar dataKey="value" fill={c.series1} radius={[0, 4, 4, 0]} barSize={18} isAnimationActive={false}>
-          <LabelList dataKey="value" position="right" formatter={(v: number) => v.toFixed(3)}
+          <LabelList dataKey="value" position="right" formatter={(v) => (typeof v === "number" ? v.toFixed(3) : v)}
             style={{ fill: "var(--ink-2)", fontSize: 12 }} />
         </Bar>
       </BarChart>

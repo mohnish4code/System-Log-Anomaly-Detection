@@ -8,9 +8,16 @@ export default defineConfig({
     proxy: { "/api": "http://localhost:8000" },
   },
   build: {
-    chunkSizeWarningLimit: 600, // recharts alone is ~510 kB minified (~150 kB gzipped)
-    rollupOptions: {
-      output: { manualChunks: { react: ["react", "react-dom"], charts: ["recharts"] } },
+    chunkSizeWarningLimit: 600, // the recharts chunk is ~390 kB minified (~110 kB gzipped)
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: "charts", test: /node_modules[\\/]/ },
+          ],
+        },
+      },
     },
   },
 });
